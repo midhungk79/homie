@@ -1,0 +1,60 @@
+Task 5)  ====>  Run a nginx container and publish any port to the outside world, similarly run a httpd container with a website template and publish any port to the outside world.
+Make sure that the both nginx and apache is running. Spin up a haproxy container and route the traffic to these containers. (refer docker hub for ha-proxy to know how this can be run)
+
+Hint : Check the diagram, in ha-proxy conf just add the backend servers (nginx and apache) and volume mount this ha-proxy conf to the ha-proxy container's default conf location.
+
+
+[ec2-user@ip-172-31-27-59 ~]$ docker run -d -p 8080:80 --name my-nginx nginx
+[ec2-user@ip-172-31-27-59 ~]$ docker run -d -p 8081:80 --name my-httpd -v /home/ec2-user/index.html:/usr/local/apache2/htdocs/ httpd
+[ec2-user@ip-172-31-27-59 ~]$ docker ps -a
+CONTAINER ID   IMAGE     COMMAND                  CREATED              STATUS              PORTS                                   NAMES
+5a144bbfd05a   httpd     "httpd-foreground"       22 seconds ago       Created             0.0.0.0:8081->80/tcp, :::8081->80/tcp   my-httpd
+3e7f7b0ab02d   nginx     "/docker-entrypoint.…"   About a minute ago   Up About a minute   0.0.0.0:8080->80/tcp, :::8080->80/tcp   my-nginx
+[ec2-user@ip-172-31-27-59 ~]$ vi  haproxy.cfg 
+global
+    log stdout format raw local0 info
+    maxconn 2000
+    user haproxy
+    group haproxy
+
+defaults
+    log     global
+    mode    http
+    option  httplog
+    option  dontlognull
+    option  http-server-close
+    option  forwardfor
+    retries 3
+    timeout connect 5000
+    timeout client  50000
+    timeout server  50000
+
+frontend http-in
+    bind *:80
+    default_backend servers
+
+backend servers
+    server nginx my-nginx:80
+    server httpd my-httpd:80
+
+[ec2-user@ip-172-31-27-59 ~]$ docker pull haproxy 
+[ec2-user@ip-172-31-27-59 ~]$ docker run -d -p 80:80 --name my-haproxy -v /home/ec2-user/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro haproxy
+[ec2-user@ip-172-31-27-59 ~]$ docker ps -a
+CONTAINER ID   IMAGE     COMMAND                  CREATED         STATUS                     PORTS                                   NAMES
+13b196b91602   haproxy   "docker-entrypoint.s…"   9 seconds ago   Exited (1) 8 seconds ago                                           my-haproxy
+5a144bbfd05a   httpd     "httpd-foreground"       4 minutes ago   Created                    0.0.0.0:8081->80/tcp, :::8081->80/tcp   my-httpd
+3e7f7b0ab02d   nginx     "/docker-entrypoint.…"   5 minutes ago   Up 5 minutes               0.0.0.0:8080->80/tcp, :::8080->80/tcp   my-nginx
+
+results. 
+
+https://prnt.sc/7qSiCG_tRpzK
+https://prnt.sc/JyUxm6TlR9t0
+
+
+
+
+
+
+
+
+
